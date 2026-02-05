@@ -85,3 +85,5 @@ dmypy.json
 *.swo
 .tmp/
 temp/
+models/
+*.jsonl
