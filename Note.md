@@ -19,7 +19,7 @@ Focus on **System Engineering** and the balance of **Latency / Throughput**
   分類的邊界也比較清楚（因為是4 categories into 2 paths）
   Encoder 支援 batch encoding
   Logistic Regression出來的predict probability有解釋意義
-
+- 
 ### 2. TF-IDF Vectorizer + Logistic Regression
 
 >直覺上也會想到TFIDF（Word2Vec）
@@ -37,6 +37,39 @@ Focus on **System Engineering** and the balance of **Latency / Throughput**
 >目標只有4 labels to 2 paths，有點殺雞用牛刀
 
 最後選擇**Embedding + LR**來當作前半段的語意分類器
+
+## Ablation Experiments
+選擇Embedding + LR後，因為有考慮到其輸出的$P(y = 1|x)$在統計上有真實的信心度，比起**Naive Bayes**，雖然還是一樣輸出機率，但因為假設特徵獨立，所以output出來往往都會比較極端。而至於**SVM (Support Vector Machine)**，雖然可以使用platt-scaling轉成機率，但是考量到需再透過一步程序轉機率，且計算上也比較有負擔，因此選擇Logistic Regression。
+
+後續還有特地做 **2x2 的消融實驗 (Ablation Study)**
+在 `train_router.py` 中做以下四種配置：
+
+| Experiment ID | Model Backbone  | Input Format              | Hypothesis (假設)                                              |
+| :------------ | :-------------- | :------------------------ | :----------------------------------------------------------- |
+| **Exp 1**     | `MiniLM-L6-v2`  | `instruction_only`        | 最輕量、速度最快，測試僅靠指令是否足夠分類。                                       |
+| **Exp 2**     | `MiniLM-L6-v2`  | `instruction_sep_context` | **(Selected)** 增加 Context 資訊，預期能提升模糊指令的辨識度，且維持 MiniLM 的速度優勢。 |
+| **Exp 3**     | `mpnet-base-v2` | `instruction_only`        | 使用更強大的模型架構，測試模型能力是否能彌補資訊量的不足。                                |
+| **Exp 4**     | `mpnet-base-v2` | `instruction_sep_context` | 理論上的效能天花板 (Upper Bound)，但推論成本最高。                             |
+
+#### Experimental Insights
+1. **Context 的重要性**： 實驗發現，包含 `Context` 的組別 (Exp 2, Exp 4) 在 F1-Score 上普遍優於僅有 Instruction 的組別。這證實了在判斷 `Summarization` vs `Creative Writing` 時，原始文本的長度與特徵是關鍵變數。
+2. **Backbone 的權衡 (Speed vs Accuracy)**： 雖然 `mpnet-base-v2` (Exp 4) 的準確度略高於 `MiniLM`，但其參數量 (110M) 是 `MiniLM` (22M) 的 5 倍，導致推論延遲顯著增加。
+3. **Final Decision**： 考慮到 Gateway 的高併發需求，選擇了 **Exp 2 (`MiniLM-L6-v2` + `instruction_sep_context`)**。
+
+#### Ablation Results
+
+| Experiment | Model Backbone  | Text Format              | Test Acc | F1 (macro) | F1 (binary) | Grey Zone Rate |
+|:-----------|:----------------|:-------------------------|:---------|:-----------|:------------|:---------------|
+| **Exp 1**  | `MiniLM-L6-v2`  | `instruction_only`       | 86.59%   | 0.866      | 0.859       | 4.58%          |
+| **Exp 2**  | `MiniLM-L6-v2`  | `instruction_sep_context`| **94.14%** | **0.941** | **0.937**   | **1.77%**      |
+| **Exp 3**  | `mpnet-base-v2` | `instruction_only`       | 87.71%   | 0.877      | 0.872       | 3.13%          |
+| **Exp 4**  | `mpnet-base-v2` | `instruction_sep_context`| 93.82%   | 0.938      | 0.933       | 2.73%          |
+
+**Key Findings:**
+- **Context 帶來 7-8% 的準確度提升** (Exp1→Exp2: +7.55%, Exp3→Exp4: +6.11%)
+- **MiniLM-L6-v2 達到最佳性能** 同時保持輕量級 (80MB vs 420MB)
+- **Grey Zone Rate 降低 60%** (從 4.58% → 1.77%)，代表模型預測能更有信心
+- **F1 Binary Score 提升** 表示 Slow Path (Label 1) 的分類能更精準
 
 ---
 ## Backend System Architecture
