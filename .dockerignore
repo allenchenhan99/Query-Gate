@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Obsidian
+.obsidian/
+
+# Test and Development
+test_*.py
+check.py
+data_check.py
+data_download.py
+
+# Data (optional - uncomment if you don't want to include data in image)
+# dolly_processed.jsonl
+
+# Results
+ablation_results.json
+confusion_matrix.png
+
+# Logs
+*.log

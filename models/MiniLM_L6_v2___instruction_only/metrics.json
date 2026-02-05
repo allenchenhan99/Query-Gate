@@ -1,0 +1,37 @@
+{
+  "model_name": "all-MiniLM-L6-v2",
+  "text_format": "instruction_only",
+  "max_context_chars": 2000,
+  "normalize": true,
+  "train_size": 4979,
+  "test_size": 1245,
+  "label_distribution": {
+    "all": [
+      3324,
+      2900
+    ],
+    "train": [
+      2659,
+      2320
+    ],
+    "test": [
+      665,
+      580
+    ]
+  },
+  "test_acc": 0.8658634538152611,
+  "test_f1_macro": 0.8655080537333862,
+  "test_f1_weighted": 0.8659800694671262,
+  "test_f1_binary": 0.8585944115156647,
+  "confusion_matrix": [
+    [
+      571,
+      94
+    ],
+    [
+      73,
+      507
+    ]
+  ],
+  "grey_zone_rate": 0.04578313253012048
+}
