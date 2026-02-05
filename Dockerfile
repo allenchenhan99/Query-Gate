@@ -33,7 +33,6 @@ ENV PATH=/root/.local/bin:$PATH
 # Copy application code
 COPY app/ ./app/
 COPY train_router.py .
-COPY test_router.py .
 
 # Copy trained models
 COPY models/ ./models/

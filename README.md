@@ -18,11 +18,13 @@ A high-performance semantic router microservice that intelligently routes AI que
 
 ## Quick Start with Docker
 
+**Note**: Models are not included in the Git repository. You need to train them first before building the Docker image.
+
 ### Prerequisites
 
 - Docker installed ([Get Docker](https://docs.docker.com/get-docker/))
 - 4GB+ RAM available
-- Trained models in `models/` directory
+- **Trained models in `models/` directory** (see [Training](#training-the-router-required))
 
 ### Build & Run
 
@@ -497,7 +499,7 @@ x-router-latency: 48.56
 ```
 
 ---
-## Quick Start
+## Development Setup
 
 ### Prerequisites
 
@@ -518,13 +520,13 @@ source venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Download and process data (optional, already included)
+# Download and process data
 python data_download.py
 ```
 
-### Training the Router (Optional)
+### Training the Router (Required)
 
-Models are already trained and included in `models/` directory. To retrain:
+Models are not included in the repository due to size constraints. You need to train them locally:
 
 ```bash
 # Train with best configuration
@@ -653,7 +655,7 @@ This ensures the system dynamically adapts to both model confidence and system l
 │   ├── main2.py             # FastAPI app with dynamic threshold policy
 │   └── service.py           # Model loading & batch inference layer
 │
-├── models/                  # Trained semantic router models
+├── models/                  # Trained models (not in repo, train locally)
 │   ├── MiniLM_L6_v2___instruction_only/
 │   ├── MiniLM_L6_v2___instruction_sep_context/  # Best model (94.14% acc)
 │   ├── mpnet_base_v2___instruction_only/
@@ -664,8 +666,8 @@ This ensures the system dynamically adapts to both model confidence and system l
 ├── data_download.py         # Download & preprocess Dolly dataset
 ├── data_check.py            # Verify processed data integrity
 │
-├── dolly_processed.jsonl    # Processed dataset (6,224 samples)
-├── ablation_results.json    # Ablation experiment results
+├── dolly_processed.jsonl    # Processed dataset (not in repo, run data_download.py)
+├── ablation_results.json    # Ablation experiment results (included)
 │
 ├── requirements.txt         # Python dependencies
 ├── Dockerfile               # Multi-stage Docker build
@@ -696,6 +698,8 @@ This ensures the system dynamically adapts to both model confidence and system l
 | `data_check.py` | Verify data integrity | `python data_check.py` |
 
 #### Models
+
+**Note**: Models are not included in the repository. Train them locally using `train_router.py`.
 
 All models are stored in `models/` with the naming convention:
 ```
