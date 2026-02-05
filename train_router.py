@@ -1,6 +1,5 @@
 """
-Semantic Router Training Script
-使用 Sentence Transformers + Logistic Regression 實作語意路由器
+Sentence Transformers + Logistic Regression
 """
 
 import json
@@ -20,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def set_global_seed(seed: int = 42):
-    """設置全局隨機種子以確保可重現性"""
+    """set global random seed to ensure reproducibility"""
     import os
     import random
 
@@ -33,11 +32,11 @@ def set_global_seed(seed: int = 42):
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
 
-        # 盡量讓 GPU deterministic（可能變慢）
+        # try to make GPU deterministic (might be slower)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
-        # PyTorch 2.x 可用（若遇到不支援的算子會丟錯）
+        # PyTorch 2.x is available (will throw error if unsupported operator is encountered)
         # torch.use_deterministic_algorithms(True)
     except Exception:
         pass
@@ -45,7 +44,7 @@ def set_global_seed(seed: int = 42):
 
 class SemanticRouter:
     """
-    語意路由器：基於 embedding 的文本分類器
+    Semantic Router: text classifier based on embedding
     - Fast Path (Label 0): classification, summarization
     - Slow Path (Label 1): creative_writing, general_qa
     """
@@ -59,16 +58,16 @@ class SemanticRouter:
     ):
         """
         Args:
-            model_name: SentenceTransformer 模型名稱
+            model_name: SentenceTransformer model name
                 推薦選項:
-                - 'all-MiniLM-L6-v2': 輕量快速 (80MB, 384 dim)
-                - 'all-mpnet-base-v2': 效果更好但較慢 (420MB, 768 dim)
-                - 'paraphrase-multilingual-MiniLM-L12-v2': 支援中文
-            text_format: 文本格式選項
-                - 'instruction_only': 只使用 instruction
+                - 'all-MiniLM-L6-v2': lightweight fast (80MB, 384 dim)
+                - 'all-mpnet-base-v2': better but slower (420MB, 768 dim)
+                - 'paraphrase-multilingual-MiniLM-L12-v2': supports Chinese
+            text_format: text format options
+                - 'instruction_only': only use instruction
                 - 'instruction_sep_context': instruction + [SEP] + context
-            max_context_chars: context 的最大字符數，超過會截斷
-            C: Logistic Regression 的正則化參數（C=1.0）
+            max_context_chars: maximum number of characters in context, truncated if exceeded
+            C: Logistic Regression regularization parameter (C=1.0)
         """
         logger.info(f"Loading SentenceTransformer: {model_name}")
         self.encoder = SentenceTransformer(model_name)
@@ -76,7 +75,7 @@ class SemanticRouter:
             C=C,
             max_iter=1000,
             random_state=42,
-            class_weight='balanced'  # 處理類別不平衡
+            class_weight='balanced'  # handle class imbalance
         )
         self.model_name = model_name
         self.text_format = text_format
@@ -84,25 +83,25 @@ class SemanticRouter:
         
     def prepare_text(self, item: dict) -> str:
         """
-        將資料轉換為可用於 embedding 的文本
+        convert data to text that can be used for embedding
         
         Args:
-            item: 包含 instruction 和 context 的字典
+            item: dictionary containing instruction and context
             
         Returns:
-            處理後的文本字符串
+            processed text string
         """
         instruction = item.get('instruction', '').strip()
         context = item.get('context', '').strip()
         
-        # 根據 text_format 決定格式
+        # decide format based on text_format
         if self.text_format == 'instruction_only':
-            # 只使用 instruction
+            # only use instruction
             return instruction
         elif self.text_format == 'instruction_sep_context':
             # Instruction: {instruction}\nContext: {context}
             if context:
-                # 截斷 context 如果超過 max_context_chars
+                # truncate context if exceeds max_context_chars
                 if len(context) > self.max_context_chars:
                     context = context[:self.max_context_chars]
                 return f"Instruction: {instruction}\nContext: {context}"
@@ -111,7 +110,7 @@ class SemanticRouter:
             raise ValueError(f"Unknown text_format: {self.text_format}")
     
     def load_data(self, data_path: str) -> Tuple[List[str], np.ndarray, List[dict]]:
-        """載入並預處理資料"""
+        """load and preprocess data"""
         logger.info(f"Loading data from {data_path}")
         
         texts = []
@@ -126,7 +125,7 @@ class SemanticRouter:
                 labels.append(item['label'])
                 raw_data.append(item)
         
-        # 確保 labels 為 int64 類型
+        # ensure labels are int64 type
         labels_array = np.array(labels, dtype=np.int64)
         
         logger.info(f"Loaded {len(texts)} samples")
@@ -135,15 +134,15 @@ class SemanticRouter:
         return texts, labels_array, raw_data
     
     def train(self, texts: List[str], labels: np.ndarray, test_size: float = 0.2, plot: bool = False, debug: bool = False):
-        """訓練路由器"""
-        # 分割訓練/測試集
+        """train router"""
+        # split training/test set
         X_train, X_test, y_train, y_test = train_test_split(
             texts, labels, test_size=test_size, random_state=42, stratify=labels
         )
         
         logger.info(f"Training set: {len(X_train)}, Test set: {len(X_test)}")
         
-        # 生成 embeddings
+        # generate embeddings
         logger.info("Encoding training texts...")
         train_embeddings = self.encoder.encode(
             X_train, 
@@ -162,27 +161,27 @@ class SemanticRouter:
             normalize_embeddings=True
         )
         
-        # 訓練分類器
+        # train classifier
         logger.info("Training classifier...")
         self.classifier.fit(train_embeddings, y_train)
         
-        # 評估
+        # evaluate
         train_score = self.classifier.score(train_embeddings, y_train)
         test_score = self.classifier.score(test_embeddings, y_test)
         
         logger.info(f"Training accuracy: {train_score:.4f}")
         logger.info(f"Test accuracy: {test_score:.4f}")
         
-        # 詳細評估
+        # detailed evaluation
         y_pred = self.classifier.predict(test_embeddings)
         y_pred_proba = self.classifier.predict_proba(test_embeddings)
         
-        # 計算 F1 score
+        # calculate F1 score
         test_f1_weighted = f1_score(y_test, y_pred, average='weighted')
         test_f1_macro = f1_score(y_test, y_pred, average='macro')
         test_f1_binary = f1_score(y_test, y_pred, pos_label=1, average='binary')
         
-        # 計算 grey_zone_rate (0.45 < p_slow < 0.55)
+        # calculate grey_zone_rate (0.45 < p_slow < 0.55)
         p_slow = y_pred_proba[:, 1]
         grey_zone = np.sum((p_slow > 0.45) & (p_slow < 0.55))
         grey_zone_rate = grey_zone / len(p_slow)
@@ -209,11 +208,11 @@ class SemanticRouter:
         print(f"  [[{cm[0,0]:5d}  {cm[0,1]:5d}]")
         print(f"   [{cm[1,0]:5d}  {cm[1,1]:5d}]]")
         
-        # 可選的繪圖
+        # optional plot
         if plot:
             self._plot_confusion_matrix(cm)
         
-        # 基本 metrics（總是回傳）
+        # basic metrics (always return)
         metrics = {
             'train_acc': train_score,
             'test_acc': test_score,
@@ -229,7 +228,7 @@ class SemanticRouter:
             'label_distribution_all': np.bincount(labels).tolist(),
         }
         
-        # Debug 模式才回傳大物件
+        # return large object in debug mode
         if debug:
             metrics.update({
                 'test_embeddings': test_embeddings,
@@ -242,12 +241,13 @@ class SemanticRouter:
     
     def predict_batch(self, texts: List[str]) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        批次預測
+        batch prediction
         
         Returns:
-            labels: 預測的標籤 (0 or 1, int)
-            p_slow: Slow Path 的機率 (0.0 ~ 1.0)
-            confidence_margin: 信心度邊際 (0.0 ~ 1.0, 越大越有把握)
+            labels: predicted labels (0 or 1, int)
+            p_slow: probability of Slow Path (0.0 ~ 1.0)
+            confidence_margin: confidence margin (0.0 ~ 1.0,越大越有把握)
+            larger means more confident
         """
         embeddings = self.encoder.encode(
             texts,
@@ -259,22 +259,22 @@ class SemanticRouter:
         
         probas = self.classifier.predict_proba(embeddings)
         labels = np.argmax(probas, axis=1).astype(int)
-        p_slow = probas[:, 1]  # Slow Path (label=1) 的機率
+        p_slow = probas[:, 1]  # probability of Slow Path (label=1)
         confidence_margin = np.abs(p_slow - 0.5) * 2  # 0~1, 越大越有把握
         
         return labels, p_slow, confidence_margin
     
     def predict_single(self, text: str) -> Tuple[int, float, float]:
-        """單一預測（內部會轉為 batch）"""
+        """single prediction (internal will be converted to batch)"""
         labels, p_slow, confidence_margin = self.predict_batch([text])
         return int(labels[0]), float(p_slow[0]), float(confidence_margin[0])
     
     def save(self, save_dir: str = 'models'):
-        """儲存模型"""
+        """save model"""
         save_path = Path(save_dir)
         save_path.mkdir(parents=True, exist_ok=True)
         
-        # 建立 artifact 包含所有必要資訊
+        # create artifact containing all necessary information
         artifact = {
             "model_name": self.model_name,
             "classifier": self.classifier,
@@ -283,7 +283,7 @@ class SemanticRouter:
             "max_context_chars": self.max_context_chars,
         }
         
-        # 儲存為單一 router.pkl 檔案
+        # save as single router.pkl file
         router_path = save_path / 'router.pkl'
         with open(router_path, 'wb') as f:
             pickle.dump(artifact, f)
@@ -291,22 +291,22 @@ class SemanticRouter:
         logger.info(f"Model saved to {router_path}")
         
     def load(self, save_dir: str = 'models'):
-        """載入模型"""
+        """load model"""
         save_path = Path(save_dir)
         
-        # 載入 artifact
+        # load artifact
         router_path = save_path / 'router.pkl'
         with open(router_path, 'rb') as f:
             artifact = pickle.load(f)
         
-        # 從 artifact 恢復所有資訊
+        # restore all information from artifact
         self.model_name = artifact["model_name"]
         self.classifier = artifact["classifier"]
         self.text_format = artifact.get("text_format", "instruction_sep_context")
         self.max_context_chars = artifact.get("max_context_chars", 2000)
         normalize = artifact.get("normalize", True)
         
-        # 重新載入 encoder（因為 SentenceTransformer 不適合直接 pickle）
+        # reload encoder (because SentenceTransformer is not suitable for direct pickle)
         logger.info(f"Loading SentenceTransformer: {self.model_name}")
         self.encoder = SentenceTransformer(self.model_name)
         
@@ -314,7 +314,7 @@ class SemanticRouter:
         logger.info(f"Text format: {self.text_format}, Max context chars: {self.max_context_chars}, Normalize: {normalize}")
     
     def _plot_confusion_matrix(self, cm: np.ndarray):
-        """繪製混淆矩陣（需要 matplotlib 和 seaborn）"""
+        """plot confusion matrix (requires matplotlib and seaborn)"""
         try:
             import matplotlib.pyplot as plt
             import seaborn as sns
@@ -340,7 +340,7 @@ class SemanticRouter:
         plt.close()
     
     def save_metrics(self, metrics: dict, save_dir: str = 'models'):
-        """儲存訓練 metrics 到 JSON 檔案"""
+        """save training metrics to JSON file"""
         save_path = Path(save_dir)
         save_path.mkdir(parents=True, exist_ok=True)
         
@@ -373,21 +373,21 @@ class SemanticRouter:
 
 def run_ablation_experiments(data_path: str = 'dolly_processed.jsonl', heavy: bool = False, plot: bool = False, C: float = 1.0):
     """
-    執行 ablation 實驗，比較不同配置的效果
+    execute ablation experiments, compare different configurations
     
-    Ablation 項目:
+    Ablation items:
     1. Text format: instruction_only vs instruction_sep_context
     2. Encoder: all-MiniLM-L6-v2 vs all-mpnet-base-v2 (only if heavy=True)
     
     Args:
-        data_path: 資料路徑
-        heavy: 如果 True，會跑四組實驗（含 mpnet）；如果 False，只跑 MiniLM 的兩種 text_format
-        plot: 是否繪製混淆矩陣
-        C: Logistic Regression 的正則化參數（default: 1.0）
+        data_path: data path
+        heavy: if True, run four experiments (including mpnet); if False, only run two text_formats of MiniLM
+        plot: whether to plot confusion matrix
+        C: Logistic Regression regularization parameter (default: 1.0)
     """
     results = []
     
-    # 實驗配置
+    # experiment configurations
     if heavy:
         experiments = [
             {
@@ -412,7 +412,7 @@ def run_ablation_experiments(data_path: str = 'dolly_processed.jsonl', heavy: bo
             },
         ]
     else:
-        # 預設只跑 MiniLM 的兩種 text_format
+        # default only run two text_formats of MiniLM
         experiments = [
             {
                 'model_name': 'all-MiniLM-L6-v2',
@@ -435,7 +435,7 @@ def run_ablation_experiments(data_path: str = 'dolly_processed.jsonl', heavy: bo
         print(f"Experiment: {exp_config['name']}")
         print(f"{'='*80}")
         
-        # 創建 router
+        # create router
         router = SemanticRouter(
             model_name=exp_config['model_name'],
             text_format=exp_config['text_format'],
@@ -443,19 +443,19 @@ def run_ablation_experiments(data_path: str = 'dolly_processed.jsonl', heavy: bo
             C=C
         )
         
-        # 載入資料
+        # load data
         texts, labels, _ = router.load_data(data_path)
         
-        # 訓練
+        # train
         metrics = router.train(texts, labels, test_size=0.2, plot=plot)
         
-        # 儲存模型（使用實驗名稱作為目錄）
+        # save model (use experiment name as directory)
         exp_name_safe = exp_config['name'].replace(' ', '_').replace('+', '_').replace('-', '_')
         save_dir = f"models/{exp_name_safe}"
         router.save(save_dir)
         router.save_metrics(metrics, save_dir)
         
-        # 儲存結果
+        # save results
         result = {
             'experiment': exp_config['name'],
             'model_name': exp_config['model_name'],
@@ -475,7 +475,7 @@ def run_ablation_experiments(data_path: str = 'dolly_processed.jsonl', heavy: bo
         print(f"  Test F1 (binary): {metrics['test_f1_binary']:.4f}")
         print(f"  Grey Zone Rate: {metrics['grey_zone_rate']:.4f}")
     
-    # 總結所有實驗結果
+    # summarize all experiment results
     print("\n" + "="*80)
     print("ABLATION RESULTS SUMMARY")
     print("="*80)
@@ -484,7 +484,7 @@ def run_ablation_experiments(data_path: str = 'dolly_processed.jsonl', heavy: bo
     for result in results:
         print(f"{result['experiment']:<50} {result['test_acc']:<12.4f} {result['test_f1_weighted']:<15.4f} {result['test_f1_macro']:<15.4f}")
     
-    # 儲存結果到 JSON
+    # save results to JSON
     results_path = Path('ablation_results.json')
     with open(results_path, 'w', encoding='utf-8') as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
@@ -511,17 +511,17 @@ def parse_args():
 
 
 def main():
-    """主函式：執行訓練或 ablation 實驗"""
-    # 設置全局隨機種子以確保可重現性
+    """main function: execute training or ablation experiments"""
+    # set global random seed to ensure reproducibility
     set_global_seed(42)
     
     args = parse_args()
     
     if args.ablation or args.ablation_heavy:
-        # 執行 ablation 實驗
+        # execute ablation experiments
         run_ablation_experiments(args.data, heavy=args.ablation_heavy, plot=args.plot, C=args.C)
     else:
-        # 單一實驗
+        # single experiment
         router = SemanticRouter(
             model_name=args.model,
             text_format=args.text_format,
