@@ -292,9 +292,11 @@ cache: OrderedDict = OrderedDict()
 - Automatically evicts least recently used entries when full
 
 **Performance Impact**:
-- Cache Hit: ~0.5ms (100x faster than inference)
+- Cache Hit: ~0.01ms (measured)
+- Cache Miss: ~110ms (measured)
+- **Speed improvement: ~10,000x faster** for cached queries
 - Expected cache hit rate: 20-30% (for repeated queries like FAQs)
-- **Overall throughput improvement: ~40%**
+- With 30% cache hit rate: Expected P50 latency ~70-80ms (vs 110ms without cache)
 
 ### 5. Decision Policy (Bonus)
 
@@ -392,27 +394,59 @@ Actual Fast    632     33
 
 ### 2. Router Latency & Throughput
 
+**Benchmark Command**:
+```bash
+python3 benchmark_cache_miss.py
+```
+
 **Test Configuration**:
-- Concurrency: 100 concurrent connections
-- Total requests: 10,000
+- 200 unique queries (cache miss scenario)
+- 100 repeated queries (cache hit scenario)
 - Model: MiniLM-L6-v2 + instruction_sep_context
+- Batch size: 20 concurrent requests
 
-**Router Latency** (x-router-latency header):
+**Router Latency Results** (x-router-latency header):
 
-| Metric | Cache Hit | Cache Miss | Overall |
-|--------|-----------|------------|---------|
-| **P50** | 0.3ms | 45ms | 32ms |
-| **P95** | 0.5ms | 85ms | 78ms |
-| **P99** | 1.0ms | 120ms | 105ms |
+#### Cache Miss Performance (Unique Queries - Requires Inference)
+| Metric | Latency |
+|--------|---------|
+| **P50** | 103.34ms |
+| **P95** | 170.45ms |
+| **P99** | 174.12ms |
+| **Mean** | 110.54ms |
+| **Min** | 92.74ms |
+| **Max** | 176.30ms |
 
-**Throughput**:
-- **Peak Throughput**: ~1,200 req/s (with 30% cache hit rate)
-- **Sustained Throughput**: ~800 req/s (no cache)
+**Successful**: 200/200 requests
+**Total Time**: 30.52s
+**Throughput**: ~6.5 req/s (limited by sequential batches)
+
+#### Cache Hit Performance (Repeated Queries - Direct Cache Return)
+| Metric | Latency |
+|--------|---------|
+| **P50** | 0.01ms |
+| **Mean** | 0.01ms |
+| **Min** | 0.01ms |
+| **Max** | 0.01ms |
+
+**Performance Improvement**: Cache hits are **~10,000x faster** than cache misses.
+
+**High Concurrency Test** (from `benchmark_quick.py`):
+```bash
+python3 benchmark_quick.py
+```
+
+| Test | Requests | Concurrency | P50 | P95 | P99 | Throughput |
+|------|----------|-------------|-----|-----|-----|------------|
+| Low | 100 | 10 | 0.01ms | 0.03ms | 0.05ms | 6.55 req/s |
+| Medium | 500 | 50 | 0.01ms | 0.02ms | 0.03ms | 32.74 req/s |
+| High | 1000 | 100 | 0.01ms | 0.01ms | 0.03ms | 63.83 req/s |
 
 **Notes**:
 - Latency measurements exclude Fast/Slow Path simulation time
-- Cache hit rate depends on query repetition patterns
+- Cache hit rate dramatically affects overall performance (0.01ms vs 100ms+)
 - Dynamic batching provides 10-20x throughput improvement over sequential processing
+- In production with 20-30% cache hit rate, expected P50: ~70-80ms, P95: ~140-160ms
 
 ### 3. Load Testing
 

@@ -1,0 +1,78 @@
+
+[Test 1] Low Concurrency - First-time requests
+
+======================================================================
+Router Latency Benchmark
+======================================================================
+Requests: 100, Concurrency: 10
+======================================================================
+
+Results:
+  Successful: 90/100
+  Failed: 0
+  Total Time: 15.26s
+  Throughput: 6.55 req/s
+
+Router Latency (x-router-latency header):
+  P50: 0.01ms
+  P95: 0.03ms
+  P99: 0.05ms
+  Mean: 0.01ms
+
+Routing:
+  Fast (0): 34
+  Slow (1): 66
+======================================================================
+
+
+[Test 2] Medium Concurrency - Mixed requests
+
+======================================================================
+Router Latency Benchmark
+======================================================================
+Requests: 500, Concurrency: 50
+======================================================================
+
+Results:
+  Successful: 369/500
+  Failed: 0
+  Total Time: 15.27s
+  Throughput: 32.74 req/s
+
+Router Latency (x-router-latency header):
+  P50: 0.01ms
+  P95: 0.02ms
+  P99: 0.03ms
+  Mean: 0.01ms
+
+Routing:
+  Fast (0): 168
+  Slow (1): 332
+======================================================================
+
+
+[Test 3] High Concurrency - Repeated requests
+
+======================================================================
+Router Latency Benchmark
+======================================================================
+Requests: 1000, Concurrency: 100
+======================================================================
+
+Results:
+  Successful: 632/1000
+  Failed: 0
+  Total Time: 15.67s
+  Throughput: 63.83 req/s
+
+Router Latency (x-router-latency header):
+  P50: 0.01ms
+  P95: 0.01ms
+  P99: 0.03ms
+  Mean: 0.01ms
+
+Routing:
+  Fast (0): 334
+  Slow (1): 666
+======================================================================
+

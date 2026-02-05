@@ -1,0 +1,17 @@
+{
+  "router_latency": {
+    "p50": 0.01,
+    "p95": 0.02,
+    "p99": 0.02,
+    "mean": 0.01105263157894737
+  },
+  "throughput": 0.6482367840732077,
+  "total_requests": 1000,
+  "successful_requests": 38,
+  "concurrency": 50,
+  "distribution": {
+    "0": 12,
+    "1": 26,
+    "error": 0
+  }
+}
