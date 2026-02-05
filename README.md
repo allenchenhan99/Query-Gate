@@ -396,7 +396,7 @@ Actual Fast    632     33
 
 **Benchmark Command**:
 ```bash
-python3 benchmark_cache_miss.py
+python3 benchmarks/benchmark_cache_miss.py
 ```
 
 **Test Configuration**:
@@ -431,9 +431,9 @@ python3 benchmark_cache_miss.py
 
 **Performance Improvement**: Cache hits are **~10,000x faster** than cache misses.
 
-**High Concurrency Test** (from `benchmark_quick.py`):
+**High Concurrency Test** (from `benchmarks/benchmark_quick.py`):
 ```bash
-python3 benchmark_quick.py
+python3 benchmarks/benchmark_quick.py
 ```
 
 | Test | Requests | Concurrency | P50 | P95 | P99 | Throughput |
@@ -689,6 +689,14 @@ This ensures the system dynamically adapts to both model confidence and system l
 │   ├── main2.py             # FastAPI app with dynamic threshold policy
 │   └── service.py           # Model loading & batch inference layer
 │
+├── benchmarks/              # Performance benchmarking scripts
+│   ├── benchmark_cache_miss.py   # Cache hit/miss performance test
+│   ├── benchmark_quick.py        # High concurrency test
+│   ├── benchmark.py              # Full end-to-end latency test
+│   ├── benchmark_output.txt      # Quick benchmark results
+│   ├── benchmark_results.json    # Full benchmark results
+│   └── cache_benchmark.json      # Cache test results
+│
 ├── models/                  # Trained models (not in repo, train locally)
 │   ├── MiniLM_L6_v2___instruction_only/
 │   ├── MiniLM_L6_v2___instruction_sep_context/  # Best model (94.14% acc)
@@ -730,6 +738,16 @@ This ensures the system dynamically adapts to both model confidence and system l
 | `test_router.py` | Smoke test models | `python test_router.py --model-dir models` |
 | `data_download.py` | Download & process data | `python data_download.py` |
 | `data_check.py` | Verify data integrity | `python data_check.py` |
+
+#### Benchmarks
+
+| File | Purpose | Usage |
+|------|---------|-------|
+| `benchmarks/benchmark_cache_miss.py` | Cache hit/miss performance analysis | `python3 benchmarks/benchmark_cache_miss.py` |
+| `benchmarks/benchmark_quick.py` | High concurrency test (3 levels) | `python3 benchmarks/benchmark_quick.py` |
+| `benchmarks/benchmark.py` | Full end-to-end latency test | `python3 benchmarks/benchmark.py` |
+| `benchmarks/*.json` | Benchmark results in JSON format | For analysis and plotting |
+| `benchmarks/*.txt` | Benchmark output logs | Human-readable results |
 
 #### Models
 
